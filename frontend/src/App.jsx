@@ -1,122 +1,140 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useEffect, useState } from 'react'
+import ExpenseForm from './components/ExpenseForm'
+import ExpenseList from './components/ExpenseList'
+import TotalSpending from './components/TotalSpending'
+import { deleteExpense, getExpenses } from './services/expenseApi'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+function Home() {
+  const [expenses, setExpenses] = useState([])
+  const [loadState, setLoadState] = useState('loading')
+  const [error, setError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [editingExpense, setEditingExpense] = useState(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    getExpenses({ signal: controller.signal })
+      .then((loadedExpenses) => {
+        setExpenses(loadedExpenses)
+        setLoadState('success')
+        setError('')
+      })
+      .catch((loadError) => {
+        if (loadError.name === 'AbortError') return
+
+        setLoadState('error')
+        setError(loadError.message)
+      })
+
+    return () => controller.abort()
+  }, [loadAttempt])
+
+  function retryLoading() {
+    setError('')
+    setLoadState('loading')
+    setLoadAttempt((attempt) => attempt + 1)
+  }
+
+  async function handleDelete(expense) {
+    await deleteExpense(expense._id)
+    setExpenses((currentExpenses) => currentExpenses.filter((currentExpense) => (
+      currentExpense._id !== expense._id
+    )))
+    setEditingExpense((currentExpense) => (
+      currentExpense?._id === expense._id ? null : currentExpense
+    ))
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-shell">
+      <header className="app-header">
+        <a className="wordmark" href="/" aria-label="Expense Tracker home">
+          <span className="wordmark-mark" aria-hidden="true">E</span>
+          <span>Expense Tracker</span>
+        </a>
+        <span className={`connection-status connection-status-${loadState}`}>
+          <span className="status-dot" aria-hidden="true" />
+          {loadState === 'loading' && 'Connecting'}
+          {loadState === 'success' && 'Connected'}
+          {loadState === 'error' && 'Unavailable'}
+        </span>
+      </header>
 
-      <div className="ticks"></div>
+      <main className="main-content">
+        <section className="page-heading" aria-labelledby="page-title">
+          <p className="eyebrow">PERSONAL FINANCES</p>
+          <h1 id="page-title">Expense Tracker</h1>
+          <p className="page-description">Your recorded expenses, in one place.</p>
+        </section>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <TotalSpending expenses={expenses} loadState={loadState} />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        <ExpenseForm
+          key={editingExpense?._id || 'new-expense'}
+          expenseToEdit={editingExpense}
+          onExpenseCreated={(createdExpense) => {
+            setExpenses((currentExpenses) => [createdExpense, ...currentExpenses])
+          }}
+          onExpenseUpdated={(updatedExpense) => {
+            setExpenses((currentExpenses) => currentExpenses.map((expense) => (
+              expense._id === updatedExpense._id ? updatedExpense : expense
+            )))
+            setEditingExpense(null)
+          }}
+          onCancelEdit={() => setEditingExpense(null)}
+          disabled={loadState !== 'success'}
+        />
+
+        <section className="expense-panel" aria-labelledby="expenses-heading">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">RECORDS</p>
+              <h2 id="expenses-heading">All expenses</h2>
+            </div>
+            {loadState === 'success' && (
+              <span className="record-count">
+                {expenses.length} {expenses.length === 1 ? 'record' : 'records'}
+              </span>
+            )}
+          </div>
+
+          <div
+            className={`panel-content${loadState === 'success' && expenses.length > 0 ? ' panel-content-list' : ''}`}
+            aria-live="polite"
+            aria-busy={loadState === 'loading'}
+          >
+            {loadState === 'loading' && (
+              <p className="status-message">Loading expenses…</p>
+            )}
+            {loadState === 'error' && (
+              <div className="error-message" role="alert">
+                <p>{error}</p>
+                <button className="retry-button" onClick={retryLoading} type="button">
+                  Retry connection
+                </button>
+              </div>
+            )}
+            {loadState === 'success' && expenses.length === 0 && (
+              <p className="status-message">No expenses recorded yet.</p>
+            )}
+            {loadState === 'success' && expenses.length > 0 && (
+              <ExpenseList
+                expenses={expenses}
+                onEdit={setEditingExpense}
+                onDelete={handleDelete}
+              />
+            )}
+          </div>
+        </section>
+      </main>
+    </div>
   )
+}
+
+function App() {
+  return <Home />
 }
 
 export default App
