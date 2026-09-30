@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createExpense, updateExpense } from '../services/expenseApi'
 
 const categories = ['Food', 'Transport', 'Bills', 'Shopping', 'Other']
+const decimalAmountPattern = /^(?:\d+\.?\d*|\.\d+)$/
 const initialValues = {
   amount: '',
   category: '',
@@ -11,11 +12,12 @@ const initialValues = {
 
 function validateExpense(values) {
   const errors = {}
-  const amount = Number(values.amount)
+  const amountText = values.amount.trim()
+  const amount = Number(amountText)
 
-  if (!values.amount.trim()) {
+  if (!amountText) {
     errors.amount = 'Enter an amount.'
-  } else if (!Number.isFinite(amount) || amount <= 0) {
+  } else if (!decimalAmountPattern.test(amountText) || !Number.isFinite(amount) || amount <= 0) {
     errors.amount = 'Amount must be a number greater than zero.'
   }
 
@@ -162,7 +164,6 @@ function ExpenseForm({
               id="expense-description"
               name="description"
               type="text"
-              maxLength={160}
               placeholder="What was this expense for?"
               value={values.description}
               onChange={updateField}

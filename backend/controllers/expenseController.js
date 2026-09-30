@@ -1,10 +1,25 @@
 const Expense = require("../models/Expense");
 
+function isValidAmount(amount) {
+  return typeof amount === "number" && Number.isFinite(amount) && amount > 0;
+}
+
+function invalidAmountResponse(res) {
+  return res.status(400).json({
+    message: "Expense data is invalid",
+    errors: { amount: "Amount must be a finite number greater than 0" },
+  });
+}
+
 async function createExpense(req, res) {
   const body = req.body;
 
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return res.status(400).json({ message: "Request body must be a JSON object" });
+  }
+
+  if (!isValidAmount(body.amount)) {
+    return invalidAmountResponse(res);
   }
 
   try {
@@ -56,6 +71,10 @@ async function updateExpense(req, res) {
 
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return res.status(400).json({ message: "Request body must be a JSON object" });
+  }
+
+  if (!isValidAmount(body.amount)) {
+    return invalidAmountResponse(res);
   }
 
   const updates = {

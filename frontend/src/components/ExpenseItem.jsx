@@ -12,6 +12,7 @@ const dateFormatter = new Intl.DateTimeFormat('en-IN', {
   year: 'numeric',
   timeZone: 'UTC',
 })
+const categories = ['Food', 'Transport', 'Bills', 'Shopping', 'Other']
 
 function getDisplayDate(value) {
   if (typeof value !== 'string' && !(value instanceof Date)) {
@@ -29,11 +30,11 @@ function getDisplayDate(value) {
 function ExpenseItem({ expense, onEdit, onDelete }) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
-  const amount = typeof expense?.amount === 'number' && Number.isFinite(expense.amount)
+  const amount = typeof expense?.amount === 'number' && Number.isFinite(expense.amount) && expense.amount > 0
     ? currencyFormatter.format(expense.amount)
     : 'Amount unavailable'
-  const category = typeof expense?.category === 'string' && expense.category.trim()
-    ? expense.category.trim()
+  const category = categories.includes(expense?.category)
+    ? expense.category
     : 'Category unavailable'
   const description = typeof expense?.description === 'string' && expense.description.trim()
     ? expense.description.trim()
